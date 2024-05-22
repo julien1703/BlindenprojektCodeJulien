@@ -1,8 +1,6 @@
-// script.js
 const video = document.getElementById('video');
 const analyzeButton = document.getElementById('analyzeButton');
 
-// Request access to the camera
 navigator.mediaDevices.getUserMedia({ video: true })
     .then(stream => {
         video.srcObject = stream;
@@ -11,7 +9,6 @@ navigator.mediaDevices.getUserMedia({ video: true })
         console.error('Error accessing the camera: ', error);
     });
 
-// Capture a frame and send it to the server for analysis
 analyzeButton.addEventListener('click', () => {
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
@@ -26,20 +23,10 @@ analyzeButton.addEventListener('click', () => {
         axios.post('http://localhost:3000/analyze', formData)
             .then(response => {
                 console.log('Analysis result: ', response.data);
+                alert('Analysis result: ' + response.data.description);
             })
             .catch(error => {
                 console.error('Error analyzing the frame: ', error);
             });
-        // fetch('/analyze', {
-        //     method: 'POST',
-        //     body: formData
-        // })
-        // .then(response => response.json())
-        // .then(data => {
-        //     console.log('Analysis result: ', data);
-        // })
-        // .catch(error => {
-        //     console.error('Error analyzing the frame: ', error);
-        // });
     }, 'image/png');
 });
