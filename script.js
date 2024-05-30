@@ -1,5 +1,6 @@
 const video = document.getElementById('video');
 const analyzeButton = document.getElementById('analyzeButton');
+const stopButton = document.getElementById('stopButton');
 
 navigator.mediaDevices.getUserMedia({ video: true })
     .then(stream => {
@@ -20,13 +21,26 @@ analyzeButton.addEventListener('click', () => {
         const formData = new FormData();
         formData.append('frame', blob, 'frame.png');
 
-        axios.post('http://localhost:3000/analyze', formData)
+        axios.post('http://localhost:3001/analyze', formData)
             .then(response => {
-                console.log('Analysis result: ', response.data);
-                alert('Analysis result: ' + response.data.description);
+                const description = response.data.description;
+                const audioUrl = response.data.audioUrl;
+                console.log('Analysis result: ', description);
+                alert('Analysis result: ' + description);
+
+                const audio = new Audio(audioUrl);
+                audio.play();
             })
             .catch(error => {
                 console.error('Error analyzing the frame: ', error);
             });
     }, 'image/png');
+});
+
+stopButton.addEventListener('click', () => {
+    const stream = video.srcObject;
+    const tracks = stream.getTracks();
+
+    tracks.forEach(track => track.stop());
+    video.srcObject = null;
 });

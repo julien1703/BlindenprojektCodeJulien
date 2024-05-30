@@ -2,14 +2,15 @@ require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
-const { ImageAnnotatorClient } = require('@google-cloud/vision');
-const { OpenAI } = require('openai');
-const base64 = require('base64-js');
+const { OpenAIApi, Configuration } = require('openai');
+const fs = require('fs');
+const path = require('path');
 
-const client = new ImageAnnotatorClient();
-const openai = new OpenAI({
-    apiKey: process.env.API_KEY,
+const configuration = new Configuration({
+    apiKey: process.env.OPENAI_API_KEY,
 });
+const openai = new OpenAIApi(configuration);
+
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -18,40 +19,48 @@ app.use(express.json());
 
 app.post('/analyze', upload.single('frame'), async (req, res) => {
     try {
-        // const [visionResult] = await client.labelDetection({ image: { content: req.file.buffer } });
-        // const labels = visionResult.labelAnnotations.map(label => label.description);
-        // const prompt = `Describe the following scene with detailed sentences based on these elements: ${labels.join(', ')}.`;
+        const imageBuffer = req.file.buffer.toString('base64');
+        const imageUrl = `data:image/jpeg;base64,${imageBuffer}`;
 
-        const base64_image = base64.fromByteArray(req.file.buffer);
-
-        const gptResponse = await openai.chat.completions.create({
+        const gptResponse = await openai.createChatCompletion({
             model: "gpt-4-turbo",
-            "messages": [
+            messages: [
                 {
-                  "role": "user",
-                  "content": [
-                    {
-                      "type": "text",
-                      "text": "What’s in this image?"
-                    },
-                    {
-                      "type": "image_url",
-                      "image_url": {
-                        "url": `data:image/jpeg;base64,${base64_image}`
-                      }
-                    }
-                  ]
-                }
-              ],
-            max_tokens: 150
+                    role: "user",
+                    content: `Describe the following image: ${imageUrl}`,
+                },
+            ],
+            max_tokens: 150,
         });
-        console.log('GPT Response: ', gptResponse.choices);
-        res.json({ description: gptResponse.choices[0].message.content });
+
+        const description = gptResponse.data.choices[0].message.content;
+
+        // Text-to-Speech request
+        const ttsResponse = await openai.createChatCompletion({
+            model: "gpt-4-turbo",
+            messages: [
+                {
+                    role: "user",
+                    content: `Convert the following text to speech: ${description}`,
+                },
+            ],
+            max_tokens: 150,
+        });
+
+        const audioContent = ttsResponse.data.choices[0].message.content;
+        const audioBuffer = Buffer.from(audioContent, 'base64');
+
+        const audioPath = path.join(__dirname, 'output.mp3');
+        fs.writeFileSync(audioPath, audioBuffer);
+
+        res.json({ description, audioUrl: `http://localhost:3000/output.mp3` });
     } catch (error) {
         console.error('Error processing the image: ', error);
         res.status(500).send('Error processing the image');
     }
 });
+
+app.use('/output.mp3', express.static(path.join(__dirname, 'output.mp3')));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
