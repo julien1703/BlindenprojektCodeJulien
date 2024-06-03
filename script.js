@@ -1,32 +1,43 @@
 const video = document.getElementById('video');
 const analyzeButton = document.getElementById('analyzeButton');
+const descriptionLength = document.getElementById('descriptionLength');
+const descriptionSpeed = document.getElementById('descriptionSpeed');
 
-navigator.mediaDevices.getUserMedia({ video: true })
-    .then(stream => {
-        video.srcObject = stream;
-    })
-    .catch(error => {
-        console.error('Error accessing the camera: ', error);
-    });
+// Bild vom Server abrufen und anzeigen
+function fetchImage() {
+    video.src = '/images/current.jpg';
+}
+
+setInterval(fetchImage, 10000); // Alle 10 Sekunden das Bild aktualisieren
 
 analyzeButton.addEventListener('click', () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const context = canvas.getContext('2d');
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    axios.get('/images/current.jpg', { responseType: 'blob' })
+        .then(response => {
+            const formData = new FormData();
+            formData.append('frame', response.data, 'frame.jpg');
+            formData.append('descriptionLength', descriptionLength.value);
+            formData.append('descriptionSpeed', descriptionSpeed.value);
 
-    canvas.toBlob(blob => {
-        const formData = new FormData();
-        formData.append('frame', blob, 'frame.png');
-
-        axios.post('http://localhost:3000/analyze', formData)
-            .then(response => {
-                console.log('Analysis result: ', response.data);
-                alert('Analysis result: ' + response.data.description);
-            })
-            .catch(error => {
-                console.error('Error analyzing the frame: ', error);
-            });
-    }, 'image/png');
+            return axios.post('/analyze', formData);
+        })
+        .then(response => {
+            const analysisResult = response.data.description;
+            console.log('Analyseergebnis: ', analysisResult);
+            alert('Analyseergebnis: ' + analysisResult);
+            speakText(analysisResult);
+        })
+        .catch(error => {
+            console.error('Fehler bei der Analyse des Frames: ', error);
+        });
 });
+
+function speakText(text) {
+    axios.post('/speak', { text: text })
+        .then(response => {
+            const audio = new Audio(response.data.audioUrl);
+            audio.play();
+        })
+        .catch(error => {
+            console.error('Fehler bei der TTS-Wiedergabe: ', error);
+        });
+}
