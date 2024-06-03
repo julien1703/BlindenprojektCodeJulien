@@ -4,7 +4,6 @@ const multer = require('multer');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const { OpenAIApi, Configuration } = require('openai');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -12,10 +11,6 @@ const upload = multer({ storage: multer.memoryStorage() });
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
-
-const openai = new OpenAIApi(new Configuration({
-    apiKey: process.env.OPENAI_API_KEY,
-}));
 
 // Verzeichnis für gespeicherte Bilder
 const imageDir = path.join(__dirname, 'public', 'images');
@@ -50,57 +45,36 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 break;
         }
 
-        const gptResponse = await openai.createChatCompletion({
-            model: "gpt-4",
+        const gptResponse = await openai.chat.completions.create({
+            model: "gpt-4o",
             messages: [
                 {
-                    role: "system",
-                    content: `You are an assistant providing detailed descriptions of images for visually impaired individuals. Please provide a ${descriptionSpeed} description with ${descriptionLength} detail.`,
-                },
-                {
                     role: "user",
-                    content: "Describe the following image:",
-                },
-                {
-                    role: "user",
-                    content: {
-                        type: "image",
-                        image: {
-                            base64: base64_image
+                    content: [
+                        {
+                            type: "text",
+                            text: "Erkläre dem Blinden was auf dem Bild zu sehen ist, um ihm dabei zu helfen sich die Umgebung in die er sich befindet besser vorzustellen?"
+                        },
+                        {
+                            type: "image_url",
+                            image_url: {
+                                url: `data:image/jpeg;base64,${base64_image}`
+                            }
                         }
-                    }
+                    ]
+                },
+                {
+                    role: "system",
+                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine ${descriptionSpeed}-Erklärung mit ${descriptionLength} Details.`,
                 }
             ],
             max_tokens: max_tokens
         });
-
-        const analysisResult = gptResponse.data.choices[0].message.content;
-        console.log('GPT Response: ', analysisResult);
-        res.json({ description: analysisResult });
+        console.log('GPT Response: ', gptResponse.choices);
+        res.json({ description: gptResponse.choices[0].message.content });
     } catch (error) {
         console.error('Error processing the image: ', error);
         res.status(500).send('Error processing the image');
-    }
-});
-
-app.post('/speak', async (req, res) => {
-    try {
-        const text = req.body.text;
-
-        const mp3 = await openai.audio.speech.create({
-            model: "tts-1",
-            voice: "alloy",
-            input: text,
-        });
-
-        const buffer = Buffer.from(await mp3.arrayBuffer());
-        const audioPath = path.join(__dirname, 'public', 'speech.mp3');
-        await fs.promises.writeFile(audioPath, buffer);
-
-        res.json({ audioUrl: '/speech.mp3' });
-    } catch (error) {
-        console.error('Error with TTS: ', error);
-        res.status(500).send('Error with TTS');
     }
 });
 
