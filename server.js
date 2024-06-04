@@ -4,6 +4,14 @@ const multer = require('multer');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const OpenAI = require('openai');
+
+
+const OpenAI_Api = process.env.API_KEY;
+
+const openai = new OpenAI({
+  apiKey: OpenAI_Api
+});
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -46,32 +54,24 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         }
 
         const gptResponse = await openai.chat.completions.create({
-            model: "gpt-4o",
+            model: "gpt-4",
             messages: [
                 {
-                    role: "user",
-                    content: [
-                        {
-                            type: "text",
-                            text: "Erkläre dem Blinden was auf dem Bild zu sehen ist, um ihm dabei zu helfen sich die Umgebung in die er sich befindet besser vorzustellen?"
-                        },
-                        {
-                            type: "image_url",
-                            image_url: {
-                                url: `data:image/jpeg;base64,${base64_image}`
-                            }
-                        }
-                    ]
+                    role: "system",
+                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine ${descriptionSpeed}-Erklärung mit ${descriptionLength} Details.`
                 },
                 {
-                    role: "system",
-                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine ${descriptionSpeed}-Erklärung mit ${descriptionLength} Details.`,
+                    role: "user",
+                    content: `Erkläre dem Blinden, was auf dem Bild zu sehen ist, um ihm dabei zu helfen, sich die Umgebung in die er sich befindet, besser vorzustellen.`,
+                    image: `data:image/jpeg;base64,${base64_image}`
                 }
             ],
             max_tokens: max_tokens
         });
-        console.log('GPT Response: ', gptResponse.choices);
-        res.json({ description: gptResponse.choices[0].message.content });
+
+        const description = gptResponse.choices[0].message.content;
+        console.log('GPT Response: ', description); // Print response to terminal
+        res.json({ description: description });
     } catch (error) {
         console.error('Error processing the image: ', error);
         res.status(500).send('Error processing the image');
