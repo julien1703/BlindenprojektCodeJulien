@@ -64,10 +64,12 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                     content: 
                     [
                         {"type": "text", "text": `Erkläre dem Blinden, was auf dem Bild zu sehen ist, um ihm dabei zu helfen, sich die Umgebung in die er sich befindet, besser vorzustellen.`},
-                        {"type": "image", "image": `data:image/jpeg;base64,${base64_image}`}
+                        {"type": "image_url", "image_url": 
+                            {
+                                "url": `data:image/jpeg;base64,${base64_image}`
+                            }
+                        }
                     ]
-                    ,
-                    image: `data:image/jpeg;base64,${base64_image}`
                 }
             ],
             max_tokens: max_tokens
