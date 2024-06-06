@@ -52,17 +52,21 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 max_tokens = 50;
                 break;
         }
-        console.log(base64_image);
         const gptResponse = await openai.chat.completions.create({
-            model: "gpt-4",
+            model: "gpt-4o",
             messages: [
                 {
                     role: "system",
-                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine ${descriptionSpeed}-Erklärung mit ${descriptionLength} Details.`
+                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine ${descriptionSpeed}-Erklärung mit ${descriptionLength} Details. falls du kein Bild errreichst antworte mit "{"error": "no image found"}`
                 },
                 {
                     role: "user",
-                    content: `Erkläre dem Blinden, was auf dem Bild zu sehen ist, um ihm dabei zu helfen, sich die Umgebung in die er sich befindet, besser vorzustellen.`,
+                    content: 
+                    [
+                        {"type": "text", "text": `Erkläre dem Blinden, was auf dem Bild zu sehen ist, um ihm dabei zu helfen, sich die Umgebung in die er sich befindet, besser vorzustellen.`},
+                        {"type": "image", "image": `data:image/jpeg;base64,${base64_image}`}
+                    ]
+                    ,
                     image: `data:image/jpeg;base64,${base64_image}`
                 }
             ],
