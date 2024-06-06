@@ -52,7 +52,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 max_tokens = 50;
                 break;
         }
-
+        console.log(base64_image);
         const gptResponse = await openai.chat.completions.create({
             model: "gpt-4",
             messages: [
