@@ -53,28 +53,34 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 break;
         }
 
-        console.log('Sending request to OpenAI API...');
         const gptResponse = await openai.chat.completions.create({
             model: "gpt-4",
             messages: [
                 {
                     role: "system",
-                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine ${descriptionSpeed}-Erklärung mit ${descriptionLength} Details. Falls du kein Bild erreichst, antworte mit '{"error": "no image found"}'.`
+                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine ${descriptionSpeed}-Erklärung mit ${descriptionLength} Details. falls du kein Bild errreichst antworte mit "{"error": "no image found"}`
                 },
                 {
                     role: "user",
-                    content: `Hier ist ein Bild in Base64: ${base64_image}. Erkläre dem Blinden, was auf dem Bild zu sehen ist, um ihm dabei zu helfen, sich die Umgebung in die er sich befindet, besser vorzustellen.`
+                    content: 
+                    [
+                        {"type": "text", "text": `Erkläre dem Blinden, was auf dem Bild zu sehen ist, um ihm dabei zu helfen, sich die Umgebung in die er sich befindet, besser vorzustellen.`},
+                        {"type": "image_url", "image_url": 
+                            {
+                                "url": `data:image/jpeg;base64,${base64_image}`
+                            }
+                        }
+                    ]
                 }
             ],
             max_tokens: max_tokens
         });
 
         const description = gptResponse.choices[0].message.content;
-        console.log('GPT Response: ', description);
+        console.log('GPT Response: ', description); // Print response to terminal
 
         // TTS Erstellung
-        const speechFile = path.resolve(__dirname, "public", "speech.mp3");
-        console.log('Creating TTS...');
+        const speechFile = path.resolve("./speech.mp3");
         const mp3 = await openai.audio.speech.create({
             model: "tts-1",
             voice: "alloy",
@@ -82,7 +88,6 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         });
         const buffer = Buffer.from(await mp3.arrayBuffer());
         await fs.promises.writeFile(speechFile, buffer);
-        console.log('Speech file saved at:', speechFile);
 
         // Audio abspielen
         exec(`mpg123 ${speechFile}`, (error, stdout, stderr) => {
@@ -95,7 +100,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
 
         res.json({ description: description });
     } catch (error) {
-        console.error('Error processing the image:', error.message);
+        console.error('Error processing the image: ', error);
         res.status(500).send('Error processing the image');
     }
 });
