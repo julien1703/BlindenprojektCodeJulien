@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const OpenAI = require('openai');
 const { exec } = require('child_process'); // Zum Abspielen der Audiodatei
+const axios = require('axios');
 
 const OpenAI_Api = process.env.API_KEY;
 
@@ -88,25 +89,41 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
 
         console.log('TTS Response: ', ttsResponse);
 
-        // Wenn ttsResponse ein Stream oder ein anderes Objekt zurückgibt, muss dies angepasst werden
-        if (ttsResponse && ttsResponse.data) {
-            const audioPath = path.join(__dirname, 'output.mp3');
-            fs.writeFileSync(audioPath, ttsResponse.data);
-            console.log('Audio saved at: ', audioPath);
+        // Verarbeitung der Antwort als Stream
+        if (ttsResponse && ttsResponse.body) {
+            const audioPath = path.join(__dirname, 'public', 'speech.mp3');
+            console.log('Audio Path:', audioPath);
 
-            // Audio abspielen
-            exec(`mpg321 ${audioPath}`, (error, stdout, stderr) => {
-                if (error) {
-                    console.error(`Error playing audio: ${error.message}`);
-                    return;
-                }
-                console.log(`Audio played successfully`);
-            });
+            // Speichern der Audiodatei mit Error-Handling
+            try {
+                const stream = ttsResponse.body;
+                const buffer = await new Promise((resolve, reject) => {
+                    const chunks = [];
+                    stream.on('data', chunk => chunks.push(chunk));
+                    stream.on('end', () => resolve(Buffer.concat(chunks)));
+                    stream.on('error', reject);
+                });
 
-            res.json({ description: description, audioPath: audioPath });
+                await fs.promises.writeFile(audioPath, buffer);
+                console.log('Audio saved at:', audioPath);
+
+                // Audio abspielen
+                exec(`mpg321 ${audioPath}`, (error, stdout, stderr) => {
+                    if (error) {
+                        console.error(`Error playing audio: ${error.message}`);
+                        return;
+                    }
+                    console.log(`Audio played successfully`);
+                });
+
+                res.json({ description: description, audioPath: audioPath });
+            } catch (err) {
+                console.error('Error writing file:', err);
+                res.status(500).send('Error writing audio file');
+            }
         } else {
-            console.error('TTS Response data is undefined or invalid');
-            res.status(500).send('TTS Response data is undefined or invalid');
+            console.error('TTS Response body is undefined or invalid');
+            res.status(500).send('TTS Response body is undefined or invalid');
         }
     } catch (error) {
         console.error('Error processing the image: ', error);
