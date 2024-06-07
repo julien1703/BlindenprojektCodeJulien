@@ -4,14 +4,7 @@ const multer = require('multer');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const OpenAI = require('openai');
-const { exec } = require('child_process');
-
-const OpenAI_Api = process.env.API_KEY;
-
-const openai = new OpenAI({
-  apiKey: OpenAI_Api
-});
+const { OpenAIApi, Configuration } = require('openai'); // Stellen Sie sicher, dass diese Reihenfolge korrekt ist
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -19,6 +12,11 @@ const upload = multer({ storage: multer.memoryStorage() });
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+
+const configuration = new Configuration({
+    apiKey: process.env.API_KEY,
+});
+const openai = new OpenAIApi(configuration);
 
 // Verzeichnis für gespeicherte Bilder
 const imageDir = path.join(__dirname, 'public', 'images');
@@ -53,53 +51,87 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 break;
         }
 
-        console.log('Sending request to OpenAI API...');
-        const gptResponse = await openai.chat.completions.create({
+        const gptResponse = await openai.createChatCompletion({
             model: "gpt-4",
             messages: [
                 {
                     role: "system",
-                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine ${descriptionSpeed}-Erklärung mit ${descriptionLength} Details. falls du kein Bild erreichst, antworte mit '{"error": "no image found"}'`
+                    content: `You are an assistant providing detailed descriptions of images for visually impaired individuals. Please provide a ${descriptionSpeed} description with ${descriptionLength} detail.`,
                 },
                 {
                     role: "user",
-                    content: [
-                        {"type": "text", "text": `Erkläre dem Blinden, was auf dem Bild zu sehen ist, um ihm dabei zu helfen, sich die Umgebung in die er sich befindet, besser vorzustellen.`},
-                        {"type": "image_url", "image_url": {"url": `data:image/jpeg;base64,${base64_image}`}}
-                    ]
+                    content: "Describe the following image:",
+                },
+                {
+                    role: "user",
+                    content: `data:image/jpeg;base64,${base64_image}`
                 }
             ],
             max_tokens: max_tokens
         });
 
-        const description = gptResponse.choices[0].message.content;
-        console.log('GPT Response: ', description);
+        const analysisResult = gptResponse.data.choices[0].message.content;
+        console.log('GPT Response: ', analysisResult);
 
-        // TTS Erstellung
-        const speechFile = path.resolve(__dirname, "public", "speech.mp3");
-        console.log('Creating TTS...');
+        // Text-to-Speech request
+        const ttsResponse = await openai.createChatCompletion({
+            model: "gpt-4",
+            messages: [
+                {
+                    role: "system",
+                    content: "You are a text-to-speech converter.",
+                },
+                {
+                    role: "user",
+                    content: analysisResult,
+                },
+            ],
+            max_tokens: 150,
+        });
+
+        const audioContent = ttsResponse.data.choices[0].message.content;
+        const audioBuffer = Buffer.from(audioContent, 'base64');
+
+        const audioPath = path.join(__dirname, 'public', 'speech.mp3');
+        console.log('Audio Path:', audioPath);  // Debugging-Log
+
+        try {
+            await fs.promises.writeFile(audioPath, audioBuffer);
+        } catch (err) {
+            console.error('Error writing file:', err);
+        }
+
+        res.json({ description: analysisResult, audioUrl: '/speech.mp3' });
+    } catch (error) {
+        console.error('Error processing the image: ', error);
+        res.status(500).send('Error processing the image');
+    }
+});
+
+app.post('/speak', async (req, res) => {
+    try {
+        const text = req.body.text;
+
         const mp3 = await openai.audio.speech.create({
             model: "tts-1",
             voice: "alloy",
-            input: description,
+            input: text,
         });
+
         const buffer = Buffer.from(await mp3.arrayBuffer());
-        await fs.promises.writeFile(speechFile, buffer);
-        console.log('Speech file saved at:', speechFile);
+        const audioPath = path.join(__dirname, 'public', 'speech.mp3');
+        console.log('Audio Path:', audioPath);  // Debugging-Log
 
-        // Audio abspielen
-        exec(`mpg123 ${speechFile}`, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Error playing audio: ${error}`);
-                return;
-            }
-            console.log(`Audio played: ${stdout}`);
-        });
+        try {
+            await fs.promises.writeFile(audioPath, buffer);
+        } catch (err) {
+            console.error('Error writing file:', err);
+        }
 
-        res.json({ description: description });
+        res.json({ audioUrl: '/speech.mp3' });
     } catch (error) {
-        console.error('Error processing the image:', error.message);
-        res.status(500).send('Error processing the image');
+        console.error('Error with TTS:', error);
+        res.status(500).send('Error with TTS');
     }
 });
 
