@@ -41,25 +41,25 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         const descriptionLength = req.body.descriptionLength;
         const descriptionSpeed = req.body.descriptionSpeed;
 
-        let max_tokens;
-        switch(descriptionLength) {
-            case 'long':
-                max_tokens = 200;
-                break;
-            case 'medium':
-                max_tokens = 100;
-                break;
-            case 'short':
-                max_tokens = 50;
-                break;
-        }
+        // let max_tokens;
+        // switch(descriptionLength) {
+        //     case 'long':
+        //         max_tokens = 200;
+        //         break;
+        //     case 'medium':
+        //         max_tokens = 100;
+        //         break;
+        //     case 'short':
+        //         max_tokens = 50;
+        //         break;
+        // }
 
         const gptResponse = await openai.chat.completions.create({
             model: "gpt-4o",
             messages: [
                 {
                     role: "system",
-                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine ${descriptionSpeed}-Erklärung mit ${descriptionLength} Details. falls du kein Bild erreichst antworte mit "{"error": "no image found"}`
+                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine Erklärung mit  Details. falls du kein Bild erreichst antworte mit "{"error": "no image found"}`
                 },
                 {
                     role: "user",
@@ -74,7 +74,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                     ]
                 }
             ],
-            max_tokens: max_tokens
+            // max_tokens: max_tokens
         });
 
         const description = gptResponse.choices[0].message.content;
