@@ -5,7 +5,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const OpenAI = require('openai');
-
+const { exec } = require('child_process'); // Zum Abspielen der Audiodatei
 
 const OpenAI_Api = process.env.API_KEY;
 
@@ -30,7 +30,7 @@ if (!fs.existsSync(imageDir)) {
 app.post('/upload', upload.single('image'), (req, res) => {
     const imagePath = path.join(imageDir, 'current.jpg');
     fs.writeFileSync(imagePath, req.file.buffer);
-    console.log('Image received and saved');
+    console.log('Image received and saved at: ', imagePath);
     res.send('Image received and saved');
 });
 
@@ -52,12 +52,13 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 max_tokens = 50;
                 break;
         }
+
         const gptResponse = await openai.chat.completions.create({
             model: "gpt-4o",
             messages: [
                 {
                     role: "system",
-                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine ${descriptionSpeed}-Erklärung mit ${descriptionLength} Details. falls du kein Bild errreichst antworte mit "{"error": "no image found"}`
+                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine ${descriptionSpeed}-Erklärung mit ${descriptionLength} Details. falls du kein Bild erreichst antworte mit "{"error": "no image found"}`
                 },
                 {
                     role: "user",
@@ -76,8 +77,29 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         });
 
         const description = gptResponse.choices[0].message.content;
-        console.log('GPT Response: ', description); // Print response to terminal
-        res.json({ description: description });
+        console.log('GPT Response: ', description);
+
+        // TTS-Anfrage
+        const ttsResponse = await openai.audio.speech.create({
+            model: "tts-1",
+            voice: "alloy",
+            input: description,
+        });
+
+        const audioPath = path.join(__dirname, 'output.mp3');
+        fs.writeFileSync(audioPath, ttsResponse.data);
+        console.log('Audio saved at: ', audioPath);
+
+        // Audio abspielen
+        exec(`mpg321 ${audioPath}`, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error playing audio: ${error.message}`);
+                return;
+            }
+            console.log(`Audio played successfully`);
+        });
+
+        res.json({ description: description, audioPath: audioPath });
     } catch (error) {
         console.error('Error processing the image: ', error);
         res.status(500).send('Error processing the image');
