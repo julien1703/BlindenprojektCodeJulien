@@ -73,8 +73,6 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                     ]
                 }
             ],
-            
-
             max_tokens: max_tokens
         });
 
