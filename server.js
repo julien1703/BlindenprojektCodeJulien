@@ -53,18 +53,19 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 break;
         }
 
+        console.log('Sending request to OpenAI API...');
         const gptResponse = await openai.chat.completions.create({
             model: "gpt-4",
             messages: [
                 {
                     role: "system",
-                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine ${descriptionSpeed}-Erklärung mit ${descriptionLength} Details.`
+                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine ${descriptionSpeed}-Erklärung mit ${descriptionLength} Details. falls du kein Bild erreichst, antworte mit '{"error": "no image found"}'`
                 },
                 {
                     role: "user",
                     content: [
-                        {"type": "text", "text": "Hier ist ein Bild in Base64. Erkläre dem Blinden, was auf dem Bild zu sehen ist:"},
-                        {"type": "text", "text": base64_image}
+                        {"type": "text", "text": `Erkläre dem Blinden, was auf dem Bild zu sehen ist, um ihm dabei zu helfen, sich die Umgebung in die er sich befindet, besser vorzustellen.`},
+                        {"type": "image_url", "image_url": {"url": `data:image/jpeg;base64,${base64_image}`}}
                     ]
                 }
             ],
@@ -72,10 +73,11 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         });
 
         const description = gptResponse.choices[0].message.content;
-        console.log('GPT Response: ', description); // Print response to terminal
+        console.log('GPT Response: ', description);
 
         // TTS Erstellung
         const speechFile = path.resolve(__dirname, "public", "speech.mp3");
+        console.log('Creating TTS...');
         const mp3 = await openai.audio.speech.create({
             model: "tts-1",
             voice: "alloy",
@@ -83,9 +85,10 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         });
         const buffer = Buffer.from(await mp3.arrayBuffer());
         await fs.promises.writeFile(speechFile, buffer);
+        console.log('Speech file saved at:', speechFile);
 
         // Audio abspielen
-        exec(`mpg123 -a hw:0,0 ${speechFile}`, (error, stdout, stderr) => {
+        exec(`mpg123 ${speechFile}`, (error, stdout, stderr) => {
             if (error) {
                 console.error(`Error playing audio: ${error}`);
                 return;
@@ -95,7 +98,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
 
         res.json({ description: description });
     } catch (error) {
-        console.error('Error processing the image: ', error);
+        console.error('Error processing the image:', error.message);
         res.status(500).send('Error processing the image');
     }
 });
