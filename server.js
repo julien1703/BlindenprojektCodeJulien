@@ -5,7 +5,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const OpenAI = require('openai');
-const { exec } = require('child_process');
+
 
 const OpenAI_Api = process.env.API_KEY;
 
@@ -52,9 +52,8 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 max_tokens = 50;
                 break;
         }
-
         const gptResponse = await openai.chat.completions.create({
-            model: "gpt-4",
+            model: "gpt-4o",
             messages: [
                 {
                     role: "system",
@@ -78,26 +77,6 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
 
         const description = gptResponse.choices[0].message.content;
         console.log('GPT Response: ', description); // Print response to terminal
-
-        // TTS Erstellung
-        const speechFile = path.resolve("./speech.mp3");
-        const mp3 = await openai.audio.speech.create({
-            model: "tts-1",
-            voice: "alloy",
-            input: description,
-        });
-        const buffer = Buffer.from(await mp3.arrayBuffer());
-        await fs.promises.writeFile(speechFile, buffer);
-
-        // Audio abspielen
-        exec(`mpg123 -a hw:0,0 ${speechFile}`, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Error playing audio: ${error}`);
-                return;
-            }
-            console.log(`Audio played: ${stdout}`);
-        });
-
         res.json({ description: description });
     } catch (error) {
         console.error('Error processing the image: ', error);
