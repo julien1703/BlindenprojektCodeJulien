@@ -86,20 +86,28 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
             input: description,
         });
 
-        const audioPath = path.join(__dirname, 'output.mp3');
-        fs.writeFileSync(audioPath, ttsResponse.data);
-        console.log('Audio saved at: ', audioPath);
+        console.log('TTS Response: ', ttsResponse);
 
-        // Audio abspielen
-        exec(`mpg321 ${audioPath}`, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Error playing audio: ${error.message}`);
-                return;
-            }
-            console.log(`Audio played successfully`);
-        });
+        // Wenn ttsResponse ein Stream oder ein anderes Objekt zurückgibt, muss dies angepasst werden
+        if (ttsResponse && ttsResponse.data) {
+            const audioPath = path.join(__dirname, 'output.mp3');
+            fs.writeFileSync(audioPath, ttsResponse.data);
+            console.log('Audio saved at: ', audioPath);
 
-        res.json({ description: description, audioPath: audioPath });
+            // Audio abspielen
+            exec(`mpg321 ${audioPath}`, (error, stdout, stderr) => {
+                if (error) {
+                    console.error(`Error playing audio: ${error.message}`);
+                    return;
+                }
+                console.log(`Audio played successfully`);
+            });
+
+            res.json({ description: description, audioPath: audioPath });
+        } else {
+            console.error('TTS Response data is undefined or invalid');
+            res.status(500).send('TTS Response data is undefined or invalid');
+        }
     } catch (error) {
         console.error('Error processing the image: ', error);
         res.status(500).send('Error processing the image');
