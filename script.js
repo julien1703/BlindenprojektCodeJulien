@@ -1,6 +1,8 @@
 const video = document.getElementById('video');
 const analyzeButton = document.getElementById('analyzeButton');
 const stopButton = document.getElementById('stopButton');
+const descriptionLength = document.getElementById('descriptionLength');
+const descriptionSpeed = document.getElementById('descriptionSpeed');
 
 navigator.mediaDevices.getUserMedia({ video: true })
     .then(stream => {
@@ -20,8 +22,10 @@ analyzeButton.addEventListener('click', () => {
     canvas.toBlob(blob => {
         const formData = new FormData();
         formData.append('frame', blob, 'frame.png');
+        formData.append('descriptionLength', descriptionLength.value);
+        formData.append('descriptionSpeed', descriptionSpeed.value);
 
-        axios.post('http://localhost:3001/analyze', formData)
+        axios.post('http://localhost:3000/analyze', formData)
             .then(response => {
                 const description = response.data.description;
                 const audioUrl = response.data.audioUrl;
