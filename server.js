@@ -104,6 +104,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
             return res.json({ description: 'No significant changes detected' });
         }
 
+        // Erstelle eine vollständige Beschreibung für das erste Bild
         const gptResponse = await openai.chat.completions.create({
             model: "gpt-4o",
             messages: [
@@ -124,6 +125,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         const newDescription = gptResponse.choices[0].message.content;
         console.log('GPT Response: ', newDescription);
 
+        // Vergleich der neuen Beschreibung mit der alten Beschreibung
         const changes = compareDescriptions(newDescription, lastDescription);
         console.log('Changes: ', changes);
 
