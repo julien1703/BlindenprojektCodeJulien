@@ -23,7 +23,7 @@ app.use(express.static('public'));
 
 // Verzeichnis für gespeicherte Bilder und Beschreibungen
 const imageDir = path.join(__dirname, 'public', 'images');
-const descriptionFile = path.join(__dirname, 'public', 'lastDescription.txt');
+const descriptionFile = path.join(__dirname, 'public', 'lastDescription.json');
 
 if (!fs.existsSync(imageDir)) {
     fs.mkdirSync(imageDir, { recursive: true });
@@ -85,16 +85,17 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
     try {
         const imageBuffer = req.file.buffer;
         const base64_image = imageBuffer.toString('base64');
-        const descriptionLength = req.body.descriptionLength;
-        const descriptionSpeed = req.body.descriptionSpeed;
 
         // Berechne den Hash-Wert des aktuellen Bildes
         const newImageHash = getImageHash(imageBuffer);
 
         let lastImageHash = '';
+        let lastDescription = '';
+
         if (fs.existsSync(descriptionFile)) {
             const lastDescriptionData = JSON.parse(fs.readFileSync(descriptionFile, 'utf-8'));
             lastImageHash = lastDescriptionData.imageHash;
+            lastDescription = lastDescriptionData.description;
         }
 
         // Prüfe, ob das Bild signifikant anders ist als das vorherige Bild
@@ -122,12 +123,6 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
 
         const newDescription = gptResponse.choices[0].message.content;
         console.log('GPT Response: ', newDescription);
-
-        let lastDescription = '';
-        if (fs.existsSync(descriptionFile)) {
-            const lastDescriptionData = JSON.parse(fs.readFileSync(descriptionFile, 'utf-8'));
-            lastDescription = lastDescriptionData.description;
-        }
 
         const changes = compareDescriptions(newDescription, lastDescription);
         console.log('Changes: ', changes);
