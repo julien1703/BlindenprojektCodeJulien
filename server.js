@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const OpenAI = require('openai');
 const { exec } = require('child_process');
+const { createHash } = require('crypto');
 
 const OpenAI_Api = process.env.API_KEY;
 
@@ -32,7 +33,6 @@ if (!fs.existsSync(imageDir)) {
 function compareDescriptions(newDesc, oldDesc) {
     if (!oldDesc) return newDesc; // Falls keine alte Beschreibung vorhanden ist, neue Beschreibung verwenden
 
-    // Implementiere hier eine einfache Vergleichslogik
     const changes = [];
     const newSentences = newDesc.split('. ');
     const oldSentences = oldDesc.split('. ');
@@ -46,6 +46,32 @@ function compareDescriptions(newDesc, oldDesc) {
     return changes.join('. ');
 }
 
+// Hilfsfunktion zum Berechnen eines Hash-Werts für das Bild
+function getImageHash(imageBuffer) {
+    return createHash('sha256').update(imageBuffer).digest('hex');
+}
+
+// Warteschlange für Audio-Wiedergabe
+let audioQueue = [];
+let isPlaying = false;
+
+function playAudioQueue() {
+    if (audioQueue.length > 0 && !isPlaying) {
+        isPlaying = true;
+        const audioPath = audioQueue.shift();
+
+        exec(`mpg321 ${audioPath}`, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error playing audio: ${error.message}`);
+            } else {
+                console.log('Audio played successfully');
+            }
+            isPlaying = false;
+            playAudioQueue();
+        });
+    }
+}
+
 // Endpunkt zum Empfangen und Speichern von Bildern
 app.post('/upload', upload.single('image'), (req, res) => {
     const imagePath = path.join(imageDir, 'current.jpg');
@@ -57,9 +83,25 @@ app.post('/upload', upload.single('image'), (req, res) => {
 // Endpunkt zur Bildanalyse
 app.post('/analyze', upload.single('frame'), async (req, res) => {
     try {
-        const base64_image = req.file.buffer.toString('base64');
+        const imageBuffer = req.file.buffer;
+        const base64_image = imageBuffer.toString('base64');
         const descriptionLength = req.body.descriptionLength;
         const descriptionSpeed = req.body.descriptionSpeed;
+
+        // Berechne den Hash-Wert des aktuellen Bildes
+        const newImageHash = getImageHash(imageBuffer);
+
+        let lastImageHash = '';
+        if (fs.existsSync(descriptionFile)) {
+            const lastDescriptionData = JSON.parse(fs.readFileSync(descriptionFile, 'utf-8'));
+            lastImageHash = lastDescriptionData.imageHash;
+        }
+
+        // Prüfe, ob das Bild signifikant anders ist als das vorherige Bild
+        if (newImageHash === lastImageHash) {
+            console.log('No significant changes detected');
+            return res.json({ description: 'No significant changes detected' });
+        }
 
         const gptResponse = await openai.chat.completions.create({
             model: "gpt-4o",
@@ -83,7 +125,8 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
 
         let lastDescription = '';
         if (fs.existsSync(descriptionFile)) {
-            lastDescription = fs.readFileSync(descriptionFile, 'utf-8');
+            const lastDescriptionData = JSON.parse(fs.readFileSync(descriptionFile, 'utf-8'));
+            lastDescription = lastDescriptionData.description;
         }
 
         const changes = compareDescriptions(newDescription, lastDescription);
@@ -116,18 +159,16 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                     await fs.promises.writeFile(audioPath, buffer);
                     console.log('Audio saved at:', audioPath);
 
-                    // Audio abspielen
-                    const mpg321Path = '/usr/bin/mpg321'; // Sicherstellen, dass dies der richtige Pfad ist
-                    exec(`${mpg321Path} ${audioPath}`, (error, stdout, stderr) => {
-                        if (error) {
-                            console.error(`Error playing audio: ${error.message}`);
-                            return;
-                        }
-                        console.log(`Audio played successfully`);
-                    });
+                    // Füge die Audiodatei zur Warteschlange hinzu und starte die Wiedergabe, falls noch nicht laufend
+                    audioQueue.push(audioPath);
+                    playAudioQueue();
 
-                    // Speichern der neuen Beschreibung
-                    fs.writeFileSync(descriptionFile, newDescription);
+                    // Speichern der neuen Beschreibung und des Bild-Hashes
+                    const descriptionData = {
+                        description: newDescription,
+                        imageHash: newImageHash
+                    };
+                    fs.writeFileSync(descriptionFile, JSON.stringify(descriptionData));
 
                     res.json({ description: changes, audioPath: audioPath });
                 } catch (err) {
