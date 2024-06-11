@@ -99,7 +99,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
 
         // Erstelle eine vollständige Beschreibung für das erste Bild
         const gptResponse = await openai.chat.completions.create({
-            model: "gpt-4",
+            model: "gpt-4o",
             messages: [
                 {
                     role: "system",
