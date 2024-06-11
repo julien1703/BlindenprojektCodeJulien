@@ -45,8 +45,8 @@ function isSignificantlyDifferent(newDesc, oldDesc) {
     const intersection = new Set([...newWords].filter(word => oldWords.has(word)));
     const similarity = intersection.size / newWords.size;
 
-    // Falls die Ähnlichkeit größer als 0.5 ist, als gleich behandeln
-    return similarity <= 0.5;
+    // Falls die Ähnlichkeit größer als 0.7 ist, als gleich behandeln
+    return similarity <= 0.7;
 }
 
 // Warteschlange für Audio-Wiedergabe
