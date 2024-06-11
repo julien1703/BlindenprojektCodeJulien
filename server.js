@@ -35,31 +35,18 @@ function getImageHash(imageBuffer) {
 }
 
 // Hilfsfunktion zum Vergleichen der neuen Beschreibung mit der vorherigen
-async function compareDescriptions(newDesc, oldDesc) {
-    if (!oldDesc) return newDesc; // Falls keine alte Beschreibung vorhanden ist, neue Beschreibung verwenden
+function isSignificantlyDifferent(newDesc, oldDesc) {
+    if (!oldDesc) return true; // Falls keine alte Beschreibung vorhanden ist, neue Beschreibung verwenden
 
-    // Verwende die OpenAI-API, um die Ähnlichkeit der Beschreibungen zu berechnen
-    const response = await openai.embeddings.create({
-        model: "text-embedding-ada-002",
-        input: [newDesc, oldDesc]
-    });
+    // Einfache Methode zur Bestimmung der signifikanten Unterschiede
+    const newWords = new Set(newDesc.toLowerCase().split(/\s+/));
+    const oldWords = new Set(oldDesc.toLowerCase().split(/\s+/));
 
-    const newDescEmbedding = response.data[0].embedding;
-    const oldDescEmbedding = response.data[1].embedding;
+    const intersection = new Set([...newWords].filter(word => oldWords.has(word)));
+    const similarity = intersection.size / newWords.size;
 
-    // Berechne die Kosinusähnlichkeit der Embeddings
-    const dotProduct = newDescEmbedding.reduce((sum, value, i) => sum + value * oldDescEmbedding[i], 0);
-    const newDescMagnitude = Math.sqrt(newDescEmbedding.reduce((sum, value) => sum + value * value, 0));
-    const oldDescMagnitude = Math.sqrt(oldDescEmbedding.reduce((sum, value) => sum + value * value, 0));
-
-    const similarity = dotProduct / (newDescMagnitude * oldDescMagnitude);
-
-    // Falls die Ähnlichkeit größer als 0.8 ist, als gleich behandeln
-    if (similarity > 0.4) {
-        return ''; // Keine signifikanten Änderungen
-    }
-
-    return newDesc; // Signifikante Änderungen vorhanden
+    // Falls die Ähnlichkeit größer als 0.5 ist, als gleich behandeln
+    return similarity <= 0.5;
 }
 
 // Warteschlange für Audio-Wiedergabe
@@ -137,20 +124,20 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         console.log('GPT Response: ', newDescription);
 
         // Vergleich der neuen Beschreibung mit der alten Beschreibung
-        const changes = await compareDescriptions(newDescription, lastDescription);
-        if (changes.trim()) {
+        const isDifferent = isSignificantlyDifferent(newDescription, lastDescription);
+        if (isDifferent) {
             console.log('Neuer Inhalt. Vorlesen der neuen Informationen.');
         } else {
             console.log('Inhalt ist gleich. Keine Audio-Datei wird vorgelesen.');
             return res.json({ description: 'No significant changes detected' });
         }
 
-        if (changes) {
+        if (isDifferent) {
             // TTS-Anfrage
             const ttsResponse = await openai.audio.speech.create({
                 model: "tts-1",
                 voice: "alloy",
-                input: changes,
+                input: newDescription,
             });
 
             console.log('TTS Response: ', ttsResponse);
@@ -183,7 +170,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                     };
                     fs.writeFileSync(descriptionFile, JSON.stringify(descriptionData));
 
-                    res.json({ description: changes, audioPath: audioPath });
+                    res.json({ description: newDescription, audioPath: audioPath });
                 } catch (err) {
                     console.error('Error writing file:', err);
                     res.status(500).send('Error writing audio file');
