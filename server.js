@@ -106,7 +106,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
 
         // Erstelle eine vollständige Beschreibung für das erste Bild
         const gptResponse = await openai.chat.completions.create({
-            model: "gpt-4",
+            model: "gpt-4o",
             messages: [
                 {
                     role: "system",
@@ -114,11 +114,10 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 },
                 {
                     role: "user",
-                    content: `Stell dir vor, du beschreibst einem Freund, was du auf dem Bild siehst.`
-                },
-                {
-                    role: "user",
-                    content: `Hier ist das Bild: data:image/jpeg;base64,${base64_image}`
+                    content: [
+                        { "type": "text", "text": `Erkläre dem Blinden, was auf dem Bild zu sehen ist, um ihm dabei zu helfen, sich die Umgebung, in der er sich befindet, besser vorzustellen.` },
+                        { "type": "image_url", "image_url": { "url": `data:image/jpeg;base64,${base64_image}` } }
+                    ]
                 }
             ],
         });
