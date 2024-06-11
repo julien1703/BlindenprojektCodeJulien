@@ -7,6 +7,7 @@ const fs = require('fs');
 const OpenAI = require('openai');
 const { exec } = require('child_process');
 const { createHash } = require('crypto');
+const { SentenceTransformer, util } = require('sentence-transformers');
 
 const OpenAI_Api = process.env.API_KEY;
 
@@ -29,26 +30,18 @@ if (!fs.existsSync(imageDir)) {
     fs.mkdirSync(imageDir, { recursive: true });
 }
 
-// Hilfsfunktion zum Vergleichen der neuen Beschreibung mit der vorherigen
-function compareDescriptions(newDesc, oldDesc) {
-    if (!oldDesc) return newDesc; // Falls keine alte Beschreibung vorhanden ist, neue Beschreibung verwenden
-
-    const changes = [];
-    const newSentences = newDesc.split('. ');
-    const oldSentences = oldDesc.split('. ');
-
-    newSentences.forEach(sentence => {
-        if (!oldSentences.includes(sentence)) {
-            changes.push(sentence);
-        }
-    });
-
-    return changes.join('. ');
-}
-
 // Hilfsfunktion zum Berechnen eines Hash-Werts für das Bild
 function getImageHash(imageBuffer) {
     return createHash('sha256').update(imageBuffer).digest('hex');
+}
+
+// Hilfsfunktion zur Berechnung der Textähnlichkeit
+async function calculateTextSimilarity(text1, text2) {
+    const model = new SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2');
+    const embeddings1 = await model.encode(text1, { convertToTensor: true });
+    const embeddings2 = await model.encode(text2, { convertToTensor: true });
+    const similarity = util.pytorch_cos_sim(embeddings1, embeddings2);
+    return similarity.item();
 }
 
 // Warteschlange für Audio-Wiedergabe
@@ -106,7 +99,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
 
         // Erstelle eine vollständige Beschreibung für das erste Bild
         const gptResponse = await openai.chat.completions.create({
-            model: "gpt-4o",
+            model: "gpt-4",
             messages: [
                 {
                     role: "system",
@@ -126,20 +119,25 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         console.log('GPT Response: ', newDescription);
 
         // Vergleich der neuen Beschreibung mit der alten Beschreibung
-        const changes = compareDescriptions(newDescription, lastDescription);
-        if (changes.trim()) {
-            console.log('Neuer Inhalt. Vorlesen der neuen Informationen.');
-        } else {
-            console.log('Inhalt ist gleich. Keine Audio-Datei wird vorgelesen.');
-            return res.json({ description: 'No significant changes detected' });
+        const similarityThreshold = 0.8; // Schwellwert für Ähnlichkeit
+        let isSimilar = false;
+        if (lastDescription) {
+            const similarity = await calculateTextSimilarity(newDescription, lastDescription);
+            console.log(`Text similarity: ${similarity}`);
+            isSimilar = similarity > similarityThreshold;
         }
 
-        if (changes) {
+        if (isSimilar) {
+            console.log('Inhalt ist gleich. Keine Audio-Datei wird vorgelesen.');
+            return res.json({ description: 'No significant changes detected' });
+        } else {
+            console.log('Neuer Inhalt. Vorlesen der neuen Informationen.');
+
             // TTS-Anfrage
             const ttsResponse = await openai.audio.speech.create({
                 model: "tts-1",
                 voice: "alloy",
-                input: changes,
+                input: newDescription,
             });
 
             console.log('TTS Response: ', ttsResponse);
@@ -172,7 +170,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                     };
                     fs.writeFileSync(descriptionFile, JSON.stringify(descriptionData));
 
-                    res.json({ description: changes, audioPath: audioPath });
+                    res.json({ description: newDescription, audioPath: audioPath });
                 } catch (err) {
                     console.error('Error writing file:', err);
                     res.status(500).send('Error writing audio file');
@@ -181,8 +179,6 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 console.error('TTS Response body is undefined or invalid');
                 res.status(500).send('TTS Response body is undefined or invalid');
             }
-        } else {
-            res.json({ description: 'No significant changes detected' });
         }
     } catch (error) {
         console.error('Error processing the image: ', error);
