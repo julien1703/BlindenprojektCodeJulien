@@ -118,10 +118,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 },
                 {
                     role: "user",
-                    content: {
-                        "type": "image_url",
-                        "image_url": { "url": `data:image/jpeg;base64,${base64_image}` }
-                    }
+                    content: `Hier ist das Bild: data:image/jpeg;base64,${base64_image}`
                 }
             ],
         });
