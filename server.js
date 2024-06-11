@@ -30,27 +30,26 @@ if (!fs.existsSync(imageDir)) {
 }
 
 // Hilfsfunktion zum Vergleichen der neuen Beschreibung mit der vorherigen
-async function compareDescriptions(newDesc, oldDesc) {
+function compareDescriptions(newDesc, oldDesc) {
     if (!oldDesc) return newDesc; // Falls keine alte Beschreibung vorhanden ist, neue Beschreibung verwenden
 
-    // Verwende die OpenAI-API, um die Ähnlichkeit der Beschreibungen zu berechnen
-    const response = await openai.embeddings.create({
-        model: "text-embedding-ada-002",
-        input: [newDesc, oldDesc]
+    // Ignoriere kleinere Unterschiede, vergleiche nur signifikante Änderungen
+    const newWords = newDesc.split(' ').filter(word => word.length > 3);
+    const oldWords = oldDesc.split(' ').filter(word => word.length > 3);
+
+    const newUniqueWords = new Set(newWords);
+    const oldUniqueWords = new Set(oldWords);
+
+    let differences = 0;
+
+    newUniqueWords.forEach(word => {
+        if (!oldUniqueWords.has(word)) {
+            differences++;
+        }
     });
 
-    const newDescEmbedding = response.data[0].embedding;
-    const oldDescEmbedding = response.data[1].embedding;
-
-    // Berechne die Kosinusähnlichkeit der Embeddings
-    const dotProduct = newDescEmbedding.reduce((sum, value, i) => sum + value * oldDescEmbedding[i], 0);
-    const newDescMagnitude = Math.sqrt(newDescEmbedding.reduce((sum, value) => sum + value * value, 0));
-    const oldDescMagnitude = Math.sqrt(oldDescEmbedding.reduce((sum, value) => sum + value * value, 0));
-
-    const similarity = dotProduct / (newDescMagnitude * oldDescMagnitude);
-
-    // Falls die Ähnlichkeit größer als 0.8 ist, als gleich behandeln
-    if (similarity > 0.6) {
+    // Falls die Unterschiede weniger als 30% der neuen Wörter ausmachen, als gleich behandeln
+    if (differences / newUniqueWords.size < 0.3) {
         return ''; // Keine signifikanten Änderungen
     }
 
@@ -137,7 +136,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         console.log('GPT Response: ', newDescription);
 
         // Vergleich der neuen Beschreibung mit der alten Beschreibung
-        const changes = await compareDescriptions(newDescription, lastDescription);
+        const changes = compareDescriptions(newDescription, lastDescription);
         if (changes.trim()) {
             console.log('Neuer Inhalt. Vorlesen der neuen Informationen.');
         } else {
