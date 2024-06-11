@@ -162,7 +162,6 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 res.status(500).send('TTS Response body is undefined or invalid');
             }
         } else {
-            console.log('No significant changes in the description.');
             res.json({ description: 'No significant changes detected' });
         }
     } catch (error) {
