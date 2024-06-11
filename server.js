@@ -106,7 +106,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
 
         // Erstelle eine vollständige Beschreibung für das erste Bild
         const gptResponse = await openai.chat.completions.create({
-            model: "gpt-4o",
+            model: "gpt-4",
             messages: [
                 {
                     role: "system",
@@ -127,7 +127,12 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
 
         // Vergleich der neuen Beschreibung mit der alten Beschreibung
         const changes = compareDescriptions(newDescription, lastDescription);
-        console.log('Changes: ', changes);
+        if (changes.trim()) {
+            console.log('Neuer Inhalt. Vorlesen der neuen Informationen.');
+        } else {
+            console.log('Inhalt ist gleich. Keine Audio-Datei wird vorgelesen.');
+            return res.json({ description: 'No significant changes detected' });
+        }
 
         if (changes) {
             // TTS-Anfrage
