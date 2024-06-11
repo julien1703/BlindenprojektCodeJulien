@@ -29,36 +29,37 @@ if (!fs.existsSync(imageDir)) {
     fs.mkdirSync(imageDir, { recursive: true });
 }
 
+// Hilfsfunktion zum Berechnen eines Hash-Werts für das Bild
+function getImageHash(imageBuffer) {
+    return createHash('sha256').update(imageBuffer).digest('hex');
+}
+
 // Hilfsfunktion zum Vergleichen der neuen Beschreibung mit der vorherigen
-function compareDescriptions(newDesc, oldDesc) {
+async function compareDescriptions(newDesc, oldDesc) {
     if (!oldDesc) return newDesc; // Falls keine alte Beschreibung vorhanden ist, neue Beschreibung verwenden
 
-    // Ignoriere kleinere Unterschiede, vergleiche nur signifikante Änderungen
-    const newWords = newDesc.split(' ').filter(word => word.length > 3);
-    const oldWords = oldDesc.split(' ').filter(word => word.length > 3);
-
-    const newUniqueWords = new Set(newWords);
-    const oldUniqueWords = new Set(oldWords);
-
-    let differences = 0;
-
-    newUniqueWords.forEach(word => {
-        if (!oldUniqueWords.has(word)) {
-            differences++;
-        }
+    // Verwende die OpenAI-API, um die Ähnlichkeit der Beschreibungen zu berechnen
+    const response = await openai.embeddings.create({
+        model: "text-embedding-ada-002",
+        input: [newDesc, oldDesc]
     });
 
-    // Falls die Unterschiede weniger als 30% der neuen Wörter ausmachen, als gleich behandeln
-    if (differences / newUniqueWords.size < 0.3) {
+    const newDescEmbedding = response.data[0].embedding;
+    const oldDescEmbedding = response.data[1].embedding;
+
+    // Berechne die Kosinusähnlichkeit der Embeddings
+    const dotProduct = newDescEmbedding.reduce((sum, value, i) => sum + value * oldDescEmbedding[i], 0);
+    const newDescMagnitude = Math.sqrt(newDescEmbedding.reduce((sum, value) => sum + value * value, 0));
+    const oldDescMagnitude = Math.sqrt(oldDescEmbedding.reduce((sum, value) => sum + value * value, 0));
+
+    const similarity = dotProduct / (newDescMagnitude * oldDescMagnitude);
+
+    // Falls die Ähnlichkeit größer als 0.8 ist, als gleich behandeln
+    if (similarity > 0.8) {
         return ''; // Keine signifikanten Änderungen
     }
 
     return newDesc; // Signifikante Änderungen vorhanden
-}
-
-// Hilfsfunktion zum Berechnen eines Hash-Werts für das Bild
-function getImageHash(imageBuffer) {
-    return createHash('sha256').update(imageBuffer).digest('hex');
 }
 
 // Warteschlange für Audio-Wiedergabe
@@ -136,7 +137,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         console.log('GPT Response: ', newDescription);
 
         // Vergleich der neuen Beschreibung mit der alten Beschreibung
-        const changes = compareDescriptions(newDescription, lastDescription);
+        const changes = await compareDescriptions(newDescription, lastDescription);
         if (changes.trim()) {
             console.log('Neuer Inhalt. Vorlesen der neuen Informationen.');
         } else {
