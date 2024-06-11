@@ -35,18 +35,27 @@ function getImageHash(imageBuffer) {
 }
 
 // Hilfsfunktion zum Vergleichen der neuen Beschreibung mit der vorherigen
-function isSignificantlyDifferent(newDesc, oldDesc) {
+async function isSignificantlyDifferent(newDesc, oldDesc) {
     if (!oldDesc) return true; // Falls keine alte Beschreibung vorhanden ist, neue Beschreibung verwenden
 
-    // Einfache Methode zur Bestimmung der signifikanten Unterschiede
-    const newWords = new Set(newDesc.toLowerCase().split(/\s+/));
-    const oldWords = new Set(oldDesc.toLowerCase().split(/\s+/));
+    // Verwende die OpenAI-API, um die Ähnlichkeit der Beschreibungen zu berechnen
+    const response = await openai.embeddings.create({
+        model: "text-embedding-ada-002",
+        input: [newDesc, oldDesc]
+    });
 
-    const intersection = new Set([...newWords].filter(word => oldWords.has(word)));
-    const similarity = intersection.size / newWords.size;
+    const newDescEmbedding = response.data[0].embedding;
+    const oldDescEmbedding = response.data[1].embedding;
 
-    // Falls die Ähnlichkeit größer als 0.7 ist, als gleich behandeln
-    return similarity <= 0.7;
+    // Berechne die Kosinusähnlichkeit der Embeddings
+    const dotProduct = newDescEmbedding.reduce((sum, value, i) => sum + value * oldDescEmbedding[i], 0);
+    const newDescMagnitude = Math.sqrt(newDescEmbedding.reduce((sum, value) => sum + value * value, 0));
+    const oldDescMagnitude = Math.sqrt(oldDescEmbedding.reduce((sum, value) => sum + value * value, 0));
+
+    const similarity = dotProduct / (newDescMagnitude * oldDescMagnitude);
+
+    // Falls die Ähnlichkeit größer als 0.9 ist, als gleich behandeln
+    return similarity <= 0.9;
 }
 
 // Warteschlange für Audio-Wiedergabe
@@ -124,7 +133,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         console.log('GPT Response: ', newDescription);
 
         // Vergleich der neuen Beschreibung mit der alten Beschreibung
-        const isDifferent = isSignificantlyDifferent(newDescription, lastDescription);
+        const isDifferent = await isSignificantlyDifferent(newDescription, lastDescription);
         if (isDifferent) {
             console.log('Neuer Inhalt. Vorlesen der neuen Informationen.');
         } else {
