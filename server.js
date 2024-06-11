@@ -21,6 +21,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
+// Verzeichnis für gespeicherte Bilder und Beschreibungen
 const imageDir = path.join(__dirname, 'public', 'images');
 const descriptionFile = path.join(__dirname, 'public', 'lastDescription.json');
 
@@ -28,8 +29,9 @@ if (!fs.existsSync(imageDir)) {
     fs.mkdirSync(imageDir, { recursive: true });
 }
 
+// Hilfsfunktion zum Vergleichen der neuen Beschreibung mit der vorherigen
 function compareDescriptions(newDesc, oldDesc) {
-    if (!oldDesc) return newDesc;
+    if (!oldDesc) return newDesc; // Falls keine alte Beschreibung vorhanden ist, neue Beschreibung verwenden
 
     const changes = [];
     const newSentences = newDesc.split('. ');
@@ -44,10 +46,12 @@ function compareDescriptions(newDesc, oldDesc) {
     return changes.join('. ');
 }
 
+// Hilfsfunktion zum Berechnen eines Hash-Werts für das Bild
 function getImageHash(imageBuffer) {
     return createHash('sha256').update(imageBuffer).digest('hex');
 }
 
+// Warteschlange für Audio-Wiedergabe
 let audioQueue = [];
 let isPlaying = false;
 
@@ -68,6 +72,7 @@ function playAudioQueue() {
     }
 }
 
+// Endpunkt zum Empfangen und Speichern von Bildern
 app.post('/upload', upload.single('image'), (req, res) => {
     const imagePath = path.join(imageDir, 'current.jpg');
     fs.writeFileSync(imagePath, req.file.buffer);
@@ -75,10 +80,13 @@ app.post('/upload', upload.single('image'), (req, res) => {
     res.send('Image received and saved');
 });
 
+// Endpunkt zur Bildanalyse
 app.post('/analyze', upload.single('frame'), async (req, res) => {
     try {
         const imageBuffer = req.file.buffer;
         const base64_image = imageBuffer.toString('base64');
+
+        // Berechne den Hash-Wert des aktuellen Bildes
         const newImageHash = getImageHash(imageBuffer);
 
         let lastImageHash = '';
@@ -90,22 +98,24 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
             lastDescription = lastDescriptionData.description;
         }
 
+        // Prüfe, ob das Bild signifikant anders ist als das vorherige Bild
         if (newImageHash === lastImageHash) {
             console.log('No significant changes detected');
             return res.json({ description: 'No significant changes detected' });
         }
 
+        // Erstelle eine vollständige Beschreibung für das erste Bild
         const gptResponse = await openai.chat.completions.create({
-            model: "gpt-4",
+            model: "gpt-4o",
             messages: [
                 {
                     role: "system",
-                    content: `Describe the image in a way that helps visually impaired individuals imagine their surroundings in detail. Ensure to include as many details as possible to enhance their understanding of the environment. If no image is found, respond with '{"error": "no image found"}'.`
+                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine Erklärung mit Details. Falls du kein Bild erreichst, antworte mit '{"error": "no image found"}'`
                 },
                 {
                     role: "user",
                     content: [
-                        { "type": "text", "text": `Please describe the image to help a visually impaired person understand their surroundings better.` },
+                        { "type": "text", "text": `Erkläre dem Blinden, was auf dem Bild zu sehen ist, um ihm dabei zu helfen, sich die Umgebung, in der er sich befindet, besser vorzustellen.` },
                         { "type": "image_url", "image_url": { "url": `data:image/jpeg;base64,${base64_image}` } }
                     ]
                 }
@@ -115,10 +125,12 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         const newDescription = gptResponse.choices[0].message.content;
         console.log('GPT Response: ', newDescription);
 
+        // Vergleich der neuen Beschreibung mit der alten Beschreibung
         const changes = compareDescriptions(newDescription, lastDescription);
         console.log('Changes: ', changes);
 
         if (changes) {
+            // TTS-Anfrage
             const ttsResponse = await openai.audio.speech.create({
                 model: "tts-1",
                 voice: "alloy",
@@ -131,6 +143,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 const audioPath = path.join(__dirname, 'public', 'speech.mp3');
                 console.log('Audio Path:', audioPath);
 
+                // Speichern der Audiodatei mit Error-Handling
                 try {
                     const stream = ttsResponse.body;
                     const buffer = await new Promise((resolve, reject) => {
@@ -143,9 +156,11 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                     await fs.promises.writeFile(audioPath, buffer);
                     console.log('Audio saved at:', audioPath);
 
+                    // Füge die Audiodatei zur Warteschlange hinzu und starte die Wiedergabe, falls noch nicht laufend
                     audioQueue.push(audioPath);
                     playAudioQueue();
 
+                    // Speichern der neuen Beschreibung und des Bild-Hashes
                     const descriptionData = {
                         description: newDescription,
                         imageHash: newImageHash
