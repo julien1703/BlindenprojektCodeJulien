@@ -33,23 +33,21 @@ if (!fs.existsSync(imageDir)) {
 function compareDescriptions(newDesc, oldDesc) {
     if (!oldDesc) return newDesc; // Falls keine alte Beschreibung vorhanden ist, neue Beschreibung verwenden
 
-    // Ignoriere kleinere Unterschiede, vergleiche nur signifikante Änderungen
-    const newWords = newDesc.split(' ').filter(word => word.length > 3);
-    const oldWords = oldDesc.split(' ').filter(word => word.length > 3);
+    // Nutze eine einfache Wortvergleichsmethode für die Ähnlichkeitsüberprüfung
+    const newWords = new Set(newDesc.toLowerCase().split(/\s+/));
+    const oldWords = new Set(oldDesc.toLowerCase().split(/\s+/));
 
-    const newUniqueWords = new Set(newWords);
-    const oldUniqueWords = new Set(oldWords);
-
-    let differences = 0;
-
-    newUniqueWords.forEach(word => {
-        if (!oldUniqueWords.has(word)) {
-            differences++;
+    let commonWords = 0;
+    newWords.forEach(word => {
+        if (oldWords.has(word)) {
+            commonWords++;
         }
     });
 
-    // Falls die Unterschiede weniger als 10% der neuen Wörter ausmachen, als gleich behandeln
-    if (differences / newUniqueWords.size < 0.1) {
+    const similarity = commonWords / newWords.size;
+
+    // Falls die Ähnlichkeit größer als 0.7 ist, als gleich behandeln
+    if (similarity > 0.7) {
         return ''; // Keine signifikanten Änderungen
     }
 
