@@ -50,7 +50,7 @@ async function compareDescriptions(newDesc, oldDesc) {
     const similarity = dotProduct / (newDescMagnitude * oldDescMagnitude);
 
     // Falls die Ähnlichkeit größer als 0.8 ist, als gleich behandeln
-    if (similarity > 0.8) {
+    if (similarity > 0.6) {
         return ''; // Keine signifikanten Änderungen
     }
 
