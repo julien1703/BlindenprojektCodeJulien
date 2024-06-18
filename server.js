@@ -52,33 +52,31 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         let prompt;
         switch(currentMode) {
             case 1:
-                prompt = "Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen, in 20-30 wörtern";
+                max_tokens = 100; // Adjust tokens if necessary
+                prompt = "Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen, in 20-30 Wörtern";
                 break;
             case 2:
-                prompt = "Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen, in 40-50 wörtern";
+                max_tokens = 200; // Adjust tokens if necessary
+                prompt = "Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen, in 40-50 Wörtern";
                 break;
         }
 
+        // Erstelle eine vollständige Beschreibung für das erste Bild
         const gptResponse = await openai.chat.completions.create({
-            model: "gpt-4",
+            model: "gpt-4o",
             messages: [
                 {
                     role: "system",
-                    content: prompt
+                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine Erklärung mit Details. Falls du kein Bild erreichst, antworte mit '{"error": "no image found"}'`
                 },
                 {
                     role: "user",
                     content: [
-                        {"type": "text", "text": `Erkläre dem Blinden, was auf dem Bild zu sehen ist, um ihm dabei zu helfen, sich die Umgebung in die er sich befindet, besser vorzustellen.`},
-                        {"type": "image_url", "image_url": 
-                            {
-                                "url": `data:image/jpeg;base64,${base64_image}`
-                            }
-                        }
+                        { "type": "text", "text": `Erkläre dem Blinden, was auf dem Bild zu sehen ist, um ihm dabei zu helfen, sich die Umgebung, in der er sich befindet, besser vorzustellen.` },
+                        { "type": "image_url", "image_url": { "url": `data:image/jpeg;base64,${base64_image}` } }
                     ]
                 }
             ],
-            max_tokens: max_tokens
         });
 
         const description = gptResponse.choices[0].message.content;
