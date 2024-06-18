@@ -52,12 +52,10 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         let prompt;
         switch(currentMode) {
             case 1:
-                max_tokens = 100; // Adjust tokens if necessary
-                prompt = "Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen, in 20-30 Wörtern";
+                prompt = "in 10-15 Wörtern, Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen";
                 break;
             case 2:
-                max_tokens = 200; // Adjust tokens if necessary
-                prompt = "Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen, in 40-50 Wörtern";
+                prompt = "in 50-70 Wörtern , Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen";
                 break;
         }
 
