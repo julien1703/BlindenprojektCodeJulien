@@ -78,7 +78,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         });
 
         const description = gptResponse.choices[0].message.content;
-        console.log('GPT Response: ', description); // Print response to terminal
+        // console.log('GPT Response: ', description); // Print response to terminal
         res.json({ description: description });
     } catch (error) {
         console.error('Error processing the image: ', error);
