@@ -64,7 +64,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
             messages: [
                 {
                     role: "system",
-                    content: `in 1 senetence describe the picture in the following language ${prompt}`
+                    content: `du bist ein hilfsystem welches blinde menschen unterstützt sich in ihrer umgebung besser zurechtzufinden`
                 },
                 {
                     role: "user",
