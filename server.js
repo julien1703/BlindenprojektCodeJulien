@@ -6,7 +6,6 @@ const path = require('path');
 const fs = require('fs');
 const OpenAI = require('openai');
 const { exec } = require('child_process'); // Zum Abspielen der Audiodatei
-const axios = require('axios');
 
 const OpenAI_Api = process.env.API_KEY;
 
@@ -20,6 +19,8 @@ const upload = multer({ storage: multer.memoryStorage() });
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+
+let currentMode = 1; // Initial mode
 
 // Verzeichnis für gespeicherte Bilder
 const imageDir = path.join(__dirname, 'public', 'images');
@@ -35,46 +36,44 @@ app.post('/upload', upload.single('image'), (req, res) => {
     res.send('Image received and saved');
 });
 
+// Endpunkt zum Wechseln des Modus
+app.post('/mode', (req, res) => {
+    currentMode = req.body.mode;
+    res.json({ mode: currentMode });
+    console.log(`Mode switched to: ${currentMode}`);
+});
+
 app.post('/analyze', upload.single('frame'), async (req, res) => {
     try {
         const base64_image = req.file.buffer.toString('base64');
         const descriptionLength = req.body.descriptionLength;
         const descriptionSpeed = req.body.descriptionSpeed;
 
-        // let max_tokens;
-        // switch(descriptionLength) {
-        //     case 'long':
-        //         max_tokens = 200;
-        //         break;
-        //     case 'medium':
-        //         max_tokens = 100;
-        //         break;
-        //     case 'short':
-        //         max_tokens = 50;
-        //         break;
-        // }
+        let prompt;
+        switch(currentMode) {
+            case 1:
+                prompt = "in 10-15 Wörtern, Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen";
+                break;
+            case 2:
+                prompt = "in 50-70 Wörtern , Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen";
+                break;
+        }
 
         const gptResponse = await openai.chat.completions.create({
             model: "gpt-4o",
             messages: [
                 {
                     role: "system",
-                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine Erklärung mit  Details. falls du kein Bild erreichst antworte mit "{"error": "no image found"}`
+                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine Erklärung mit Details. Falls du kein Bild erreichst, antworte mit '{"error": "no image found"}'`
                 },
                 {
                     role: "user",
-                    content: 
-                    [
-                        {"type": "text", "text": `Erkläre dem Blinden, was auf dem Bild zu sehen ist, um ihm dabei zu helfen, sich die Umgebung in die er sich befindet, besser vorzustellen.`},
-                        {"type": "image_url", "image_url": 
-                            {
-                                "url": `data:image/jpeg;base64,${base64_image}`
-                            }
-                        }
+                    content: [
+                        { "type": "text", "text": `Erkläre dem Blinden, was auf dem Bild zu sehen ist, um ihm dabei zu helfen, sich die Umgebung, in der er sich befindet, besser vorzustellen.` },
+                        { "type": "image_url", "image_url": { "url": `data:image/jpeg;base64,${base64_image}` } }
                     ]
                 }
             ],
-            // max_tokens: max_tokens
         });
 
         const description = gptResponse.choices[0].message.content;
