@@ -55,7 +55,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 prompt = "in english, talk about the light setting in the picture";
                 break;
             case 2:
-                prompt = "in 50-70 Wörtern , Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen";
+                prompt = "in spanish, talk about the light setting in the picture";
                 break;
         }
 
@@ -64,7 +64,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
             messages: [
                 {
                     role: "system",
-                    content: `Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen. Achte dabei auf eine Erklärung mit Details. Falls du kein Bild erreichst, antworte mit '{"error": "no image found"}'`
+                    content: `beschreibe folgende das bild nach folgendem prompt ${prompt}`
                 },
                 {
                     role: "user",
