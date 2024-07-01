@@ -138,10 +138,10 @@ function playNextInQueue() {
         if (error) {
             console.error(`Error playing audio: ${error.message}`);
         } else {
+            playNextInQueue();
             console.log('Audio played successfully');
         }
         // Rufe die Funktion erneut auf, um die nächste Datei in der Warteschlange abzuspielen
-        playNextInQueue();
     });
 }
 
