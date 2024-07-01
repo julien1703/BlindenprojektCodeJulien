@@ -108,7 +108,9 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
 
                 // Füge die Datei zur Warteschlange hinzu und starte die Wiedergabe, falls keine Datei abgespielt wird
                 audioQueue.push(audioPath);
-                playNextInQueue();
+                if (!isPlaying) {
+                    playNextInQueue();
+                }
 
                 res.json({ description: description, audioPath: audioPath });
             } catch (err) {
@@ -127,19 +129,20 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
 
 // Funktion zur Wiedergabe der nächsten Audiodatei in der Warteschlange
 function playNextInQueue() {
-    if (isPlaying || audioQueue.length === 0) {
+    if (audioQueue.length === 0) {
+        isPlaying = false;
         return;
     }
 
     isPlaying = true;
     const audioPath = audioQueue.shift();
     exec(`mpg321 ${audioPath}`, (error, stdout, stderr) => {
-        isPlaying = false;
         if (error) {
             console.error(`Error playing audio: ${error.message}`);
-        } else {
-            console.log('Audio played successfully');
+            isPlaying = false;
+            return;
         }
+        console.log('Audio played successfully');
         // Rufe die Funktion erneut auf, um die nächste Datei in der Warteschlange abzuspielen
         playNextInQueue();
     });
