@@ -69,7 +69,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 {
                     role: "user",
                     content: [
-                        { "type": "text", "text": `Erkläre dem Blinden, wie die umgebung um ihn aussieht, um ihm dabei zu helfen, sich die Umgebung, in der er sich befindet, besser vorzustellen.` },
+                        { "type": "text", "text": `in 1 senetence describe the picture in the following language ${prompt}` },
                         { "type": "image_url", "image_url": { "url": `data:image/jpeg;base64,${base64_image}` } }
                     ]
                 }
