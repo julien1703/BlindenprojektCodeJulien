@@ -52,10 +52,10 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         let prompt;
         switch(currentMode) {
             case 1:
-                prompt = "in english, talk about the light setting in the picture";
+                prompt = "french";
                 break;
             case 2:
-                prompt = "in spanish, talk about the light setting in the picture";
+                prompt = "spanish";
                 break;
         }
 
@@ -64,7 +64,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
             messages: [
                 {
                     role: "system",
-                    content: `beschreibe folgende das bild nach folgendem prompt ${prompt}`
+                    content: `in 1 senetence describe the picture in the following language ${prompt}`
                 },
                 {
                     role: "user",
