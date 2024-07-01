@@ -52,10 +52,10 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         let prompt;
         switch(currentMode) {
             case 1:
-                prompt = "in 50-70 Wörtern, erkläre im Detail die Umgebung, in der sich die Person befindet.Beschreibe die Objekte und Ereignisse im Bild klar und präzise. Vermeide Farben. Nutze Richtungsangaben wie 'links', 'rechts', 'vor dir' und 'hinter dir'. Gib Entfernungen und Größenverhältnisse verständlich an. Beschreibe die Mimik und Gestik von Personen und erwähne mögliche soziale Interaktionen. Beginne mit dem Vordergrund, gehe dann zum Hintergrund über und beschließe mit der Gesamtumgebung .";
+                prompt = "in 50-70 Wörtern, erkläre im Detail die Umgebung, in der sich die Person befindet.Beschreibe die Objekte und Ereignisse im Bild klar und präzise. Vermeide Farben. Nutze Richtungsangaben wie 'links', 'rechts', 'vor dir' und 'hinter dir'. Gib Entfernungen und Größenverhältnisse verständlich an. Beschreibe die Mimik und Gestik von Personen und erwähne mögliche soziale Interaktionen. Beginne mit dem Vordergrund, gehe dann zum Hintergrund über und beschließe mit der Gesamtumgebung.";
                 break;
             case 2:
-                prompt = "in 20-30 Wörtern, erkläre kurz und prägnat die Umgebung ,in der sich die Person befindet. Beschreibe die Objekte und Ereignisse im Bild klar und präzise. Vermeide Farben und nicht akut interessante elemnte der umgebung. Nutze Richtungsangaben wie 'links', 'rechts', 'vor dir' und 'hinter dir'. Gib Entfernungen und Größenverhältnisse verständlich an. Beschreibe die Mimik und Gestik von Personen und erwähne mögliche soziale Interaktionen. Beginne mit dem Vordergrund, gehe dann zum Hintergrund über und beschließe mit der Gesamtumgebung .";
+                prompt = "in 20-30 Wörtern, erkläre kurz und prägnant die Umgebung, in der sich die Person befindet. Beschreibe die Objekte und Ereignisse im Bild klar und präzise. Vermeide Farben und nicht akut interessante Elemente der Umgebung. Nutze Richtungsangaben wie 'links', 'rechts', 'vor dir' und 'hinter dir'. Gib Entfernungen und Größenverhältnisse verständlich an. Beschreibe die Mimik und Gestik von Personen und erwähne mögliche soziale Interaktionen. Beginne mit dem Vordergrund, gehe dann zum Hintergrund über und beschließe mit der Gesamtumgebung.";
                 break;
         }
 
@@ -69,7 +69,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 {
                     role: "user",
                     content: [
-                        { "type": "text", "text": `Beschreibe die Umgebung sodass sie sich eine Blinde Person gut vorstellen kann. Achte dabei auf folgende Rahmenbedingungen ${prompt}` },
+                        { "type": "text", "text": `Beschreibe die Umgebung, sodass sie sich eine blinde Person gut vorstellen kann. Achte dabei auf folgende Rahmenbedingungen: ${prompt}` },
                         { "type": "image_url", "image_url": { "url": `data:image/jpeg;base64,${base64_image}` } }
                     ]
                 }
@@ -106,14 +106,9 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 await fs.promises.writeFile(audioPath, buffer);
                 console.log('Audio saved at:', audioPath);
 
-                // Füge die Datei zur Warteschlange hinzu und starte die Wiedergabe, falls keine Datei abgespielt wird
+                // Füge die Datei zur Warteschlange hinzu
                 audioQueue.push(audioPath);
-                let max = false;
-                if(!max) {
-                    playNextInQueue();
-                    max = true;
-                }
-                
+                playNextInQueue(); // Starte die Wiedergabe, falls keine Datei abgespielt wird
 
                 res.json({ description: description, audioPath: audioPath });
             } catch (err) {
@@ -139,14 +134,16 @@ function playNextInQueue() {
     isPlaying = true;
     const audioPath = audioQueue.shift();
     exec(`mpg321 ${audioPath}`, (error, stdout, stderr) => {
-        isPlaying = false;
         if (error) {
             console.error(`Error playing audio: ${error.message}`);
         } else {
-            playNextInQueue();
             console.log('Audio played successfully');
         }
+        isPlaying = false;
         // Rufe die Funktion erneut auf, um die nächste Datei in der Warteschlange abzuspielen
+        if (audioQueue.length > 0) {
+            playNextInQueue();
+        }
     });
 }
 
