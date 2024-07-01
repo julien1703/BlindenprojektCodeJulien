@@ -52,7 +52,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         let prompt;
         switch(currentMode) {
             case 1:
-                prompt = "in 50-70 Wörtern, erkläre im Detail die Umgebung, in der sich die Person befindet.Beschreibe die Objekte und Ereignisse im Bild klar und präzise. Vermeide Farben. Nutze Richtungsangaben wie 'links', 'rechts', 'vor dir' und 'hinter dir'. Gib Entfernungen und Größenverhältnisse verständlich an. Beschreibe die Mimik und Gestik von Personen und erwähne mögliche soziale Interaktionen. Beginne mit dem Vordergrund, gehe dann zum Hintergrund über und beschließe mit der Gesamtumgebung.";
+                prompt = "in 50-60 Wörtern, erkläre im Detail die Umgebung, in der sich die Person befindet.Beschreibe die Objekte und Ereignisse im Bild klar und präzise. Vermeide Farben. Nutze Richtungsangaben wie 'links', 'rechts', 'vor dir' und 'hinter dir'. Gib Entfernungen und Größenverhältnisse verständlich an. Beschreibe die Mimik und Gestik von Personen und erwähne mögliche soziale Interaktionen. Beginne mit dem Vordergrund, gehe dann zum Hintergrund über und beschließe mit der Gesamtumgebung.";
                 break;
             case 2:
                 prompt = "in 20-30 Wörtern, erkläre kurz und prägnant die Umgebung, in der sich die Person befindet. Beschreibe die Objekte und Ereignisse im Bild klar und präzise. Vermeide Farben und nicht akut interessante Elemente der Umgebung. Nutze Richtungsangaben wie 'links', 'rechts', 'vor dir' und 'hinter dir'. Gib Entfernungen und Größenverhältnisse verständlich an. Beschreibe die Mimik und Gestik von Personen und erwähne mögliche soziale Interaktionen. Beginne mit dem Vordergrund, gehe dann zum Hintergrund über und beschließe mit der Gesamtumgebung.";
