@@ -5,7 +5,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const OpenAI = require('openai');
-const { exec } = require('child_process'); // Zum Abspielen der Audiodatei
+const { spawn } = require('child_process'); // Zum Abspielen der Audiodatei
 
 const OpenAI_Api = process.env.API_KEY;
 
@@ -133,12 +133,23 @@ function playNextInQueue() {
 
     isPlaying = true;
     const audioPath = audioQueue.shift();
-    exec(`mpg321 ${audioPath}`, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Error playing audio: ${error.message}`);
+    const player = spawn('mpg321', [audioPath]);
+
+    player.on('close', (code) => {
+        if (code !== 0) {
+            console.error(`mpg321 process exited with code ${code}`);
         } else {
             console.log('Audio played successfully');
         }
+        isPlaying = false;
+        // Rufe die Funktion erneut auf, um die nächste Datei in der Warteschlange abzuspielen
+        if (audioQueue.length > 0) {
+            playNextInQueue();
+        }
+    });
+
+    player.on('error', (err) => {
+        console.error('Failed to start mpg321:', err);
         isPlaying = false;
         // Rufe die Funktion erneut auf, um die nächste Datei in der Warteschlange abzuspielen
         if (audioQueue.length > 0) {
