@@ -108,7 +108,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
 
                 // Füge die Datei zur Warteschlange hinzu und starte die Wiedergabe, falls keine Datei abgespielt wird
                 audioQueue.push(audioPath);
-                playNextInQueue();
+                // playNextInQueue();
 
                 res.json({ description: description, audioPath: audioPath });
             } catch (err) {
