@@ -21,6 +21,8 @@ app.use(express.json());
 app.use(express.static('public'));
 
 let currentMode = 1; // Initial mode
+const audioQueue = []; // Warteschlange für Audio-Beschreibungen
+let isPlaying = false; // Status, ob gerade eine Audio-Datei abgespielt wird
 
 // Verzeichnis für gespeicherte Bilder
 const imageDir = path.join(__dirname, 'public', 'images');
@@ -46,13 +48,11 @@ app.post('/mode', (req, res) => {
 app.post('/analyze', upload.single('frame'), async (req, res) => {
     try {
         const base64_image = req.file.buffer.toString('base64');
-        const descriptionLength = req.body.descriptionLength;
-        const descriptionSpeed = req.body.descriptionSpeed;
 
         let prompt;
         switch(currentMode) {
             case 1:
-                prompt = "in 10-15 Wörtern, Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen";
+                prompt = "in einem kurzen satz, Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen";
                 break;
             case 2:
                 prompt = "in 50-70 Wörtern , Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen";
@@ -69,7 +69,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 {
                     role: "user",
                     content: [
-                        { "type": "text", "text": `Erkläre dem Blinden, was auf dem Bild zu sehen ist, um ihm dabei zu helfen, sich die Umgebung, in der er sich befindet, besser vorzustellen.` },
+                        { "type": "text", "text": `Erkläre dem Blinden, wie die umgebung um ihn aussieht, um ihm dabei zu helfen, sich die Umgebung, in der er sich befindet, besser vorzustellen.` },
                         { "type": "image_url", "image_url": { "url": `data:image/jpeg;base64,${base64_image}` } }
                     ]
                 }
@@ -106,14 +106,9 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 await fs.promises.writeFile(audioPath, buffer);
                 console.log('Audio saved at:', audioPath);
 
-                // Audio abspielen
-                exec(`mpg321 ${audioPath}`, (error, stdout, stderr) => {
-                    if (error) {
-                        console.error(`Error playing audio: ${error.message}`);
-                        return;
-                    }
-                    console.log(`Audio played successfully`);
-                });
+                // Füge die Datei zur Warteschlange hinzu und starte die Wiedergabe, falls keine Datei abgespielt wird
+                audioQueue.push(audioPath);
+                playNextInQueue();
 
                 res.json({ description: description, audioPath: audioPath });
             } catch (err) {
@@ -129,6 +124,26 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         res.status(500).send('Error processing the image');
     }
 });
+
+// Funktion zur Wiedergabe der nächsten Audiodatei in der Warteschlange
+function playNextInQueue() {
+    if (isPlaying || audioQueue.length === 0) {
+        return;
+    }
+
+    isPlaying = true;
+    const audioPath = audioQueue.shift();
+    exec(`mpg321 ${audioPath}`, (error, stdout, stderr) => {
+        isPlaying = false;
+        if (error) {
+            console.error(`Error playing audio: ${error.message}`);
+        } else {
+            console.log('Audio played successfully');
+        }
+        // Rufe die Funktion erneut auf, um die nächste Datei in der Warteschlange abzuspielen
+        playNextInQueue();
+    });
+}
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
