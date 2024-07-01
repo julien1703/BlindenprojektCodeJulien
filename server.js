@@ -52,10 +52,10 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         let prompt;
         switch(currentMode) {
             case 1:
-                prompt = "french";
+                prompt = "in 50-70 Wörtern, erkläre im Detail die Umgebung, in der sich die Person befindet.Beschreibe die Objekte und Ereignisse im Bild klar und präzise. Vermeide Farben. Nutze Richtungsangaben wie 'links', 'rechts', 'vor dir' und 'hinter dir'. Gib Entfernungen und Größenverhältnisse verständlich an. Beschreibe die Mimik und Gestik von Personen und erwähne mögliche soziale Interaktionen. Beginne mit dem Vordergrund, gehe dann zum Hintergrund über und beschließe mit der Gesamtumgebung .";
                 break;
             case 2:
-                prompt = "spanish";
+                prompt = "in 20-30 Wörtern, erkläre kurz und prägnat die Umgebung ,in der sich die Person befindet. Beschreibe die Objekte und Ereignisse im Bild klar und präzise. Vermeide Farben und nicht akut interessante elemnte der umgebung. Nutze Richtungsangaben wie 'links', 'rechts', 'vor dir' und 'hinter dir'. Gib Entfernungen und Größenverhältnisse verständlich an. Beschreibe die Mimik und Gestik von Personen und erwähne mögliche soziale Interaktionen. Beginne mit dem Vordergrund, gehe dann zum Hintergrund über und beschließe mit der Gesamtumgebung .";
                 break;
         }
 
@@ -69,7 +69,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
                 {
                     role: "user",
                     content: [
-                        { "type": "text", "text": `in 1 senetence describe the picture in the following language ${prompt}` },
+                        { "type": "text", "text": `Beschreibe die Umgebung sodass sie sich eine Blinde Person gut vorstellen kann. Achte dabei auf folgende Rahmenbedingungen ${prompt}` },
                         { "type": "image_url", "image_url": { "url": `data:image/jpeg;base64,${base64_image}` } }
                     ]
                 }
