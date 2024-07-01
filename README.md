@@ -1,6 +1,6 @@
 # Blindenbrille Projekt
 
-Dieses Projekt implementiert eine intelligente Blindenbrille, die mithilfe eines Raspberry Pi 4 und OpenAI blinden Menschen hilft, ihre Umgebung besser wahrzunehmen. Die Brille nimmt kontinuierlich Bilder der Umgebung auf und sendet diese an einen Server, der die Bilder analysiert und detaillierte Beschreibungen zurücksendet. Diese Beschreibungen können dem Benutzer in einer geeigneten Form, beispielsweise über eine Sprachausgabe, vorgelesen werden.
+Dieses Projekt implementiert eine intelligente Blindenbrille, die mithilfe eines Raspberry Pi 4 und OpenAI blinden Menschen hilft, ihre Umgebung besser wahrzunehmen. Die Brille nimmt kontinuierlich Bilder der Umgebung auf und sendet diese an einen Server, der die Bilder analysiert und detaillierte Beschreibungen zurücksendet. Diese Beschreibungen werden anschlißend über eine Sprachausgabe vorgelesen.
 
 ## Inhaltsverzeichnis
 
@@ -37,8 +37,8 @@ Dieses Projekt implementiert eine intelligente Blindenbrille, die mithilfe eines
 3. **Moduswechsel**:
    - Der kapazitive Sensor ermöglicht es dem Benutzer, zwischen zwei Modi zu wechseln. Dies geschieht durch Berühren des Sensors. Der aktuelle Modus wird an den Server gesendet, der dann die entsprechende Beschreibungslänge verwendet.
 
-4. **Ergebnisse anzeigen**:
-   - Die vom Server generierten Beschreibungen können auf verschiedene Weise angezeigt oder wiedergegeben werden, z.B. durch eine Sprachausgabe.
+4. **Ergebnisse ausgeben**:
+   - Die vom Server generierten Beschreibungen können als Sprachausgabe über Bluetooth oder Kable ausgegeben werden.
 
 ## Installation
 
@@ -100,5 +100,5 @@ Cloud-System: IoT-Plattform
 - OpenAI API: Analysiert die Bilder und liefert detaillierte Beschreibungen zurück an den Node.js Server.
 
 ## Anwendungen
- - Ausgabe: Die generierten Beschreibungen werden zur Ausgabe bereitgestellt, z.B. durch Sprachausgabe, um blinden Menschen zu helfen, sich ihre Umgebung besser vorzustellen.
+ - Ausgabe: Die generierten Beschreibungen werden zur Audioausgabe bereitgestellt um blinden Menschen zu helfen, sich ihre Umgebung besser vorzustellen.
 
