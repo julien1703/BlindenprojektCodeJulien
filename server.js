@@ -52,7 +52,7 @@ app.post('/analyze', upload.single('frame'), async (req, res) => {
         let prompt;
         switch(currentMode) {
             case 1:
-                prompt = "in einem kurzen satz, Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen";
+                prompt = "in english, talk about the light setting in the picture";
                 break;
             case 2:
                 prompt = "in 50-70 Wörtern , Schreibe die Antwort bitte so, dass sie blinden Menschen helfen kann, sich die Umgebung besser vorzustellen";
